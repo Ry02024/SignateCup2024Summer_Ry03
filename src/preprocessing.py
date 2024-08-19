@@ -179,3 +179,45 @@ def preprocess_data_for_catboost(df):
         df[column] = df[column].astype('category')
 
     return df, categorical_columns
+
+#分析用の前処理関数
+def preprocess_data4cluster(df):
+    df['Age'] = df['Age'].apply(process_age)
+    # df['TypeofContact'] = df['TypeofContact'].apply(TypeofContact_to_dummy)
+    # CityTier
+    df['DurationOfPitch'] = df['DurationOfPitch'].apply(convert_to_minutes)
+    df['Occupation'] = df['Occupation'].apply(standardize_str)
+    df['Gender'] = df['Gender'].apply(Gender_dealing)
+    df['NumberOfFollowups'] = df['NumberOfFollowups'].apply(NumberOfFollowups_dealing)
+    df['ProductPitched'] = df['ProductPitched'].apply(standardize_str)
+    df['NumberOfTrips'] = df['NumberOfTrips'].apply(NumberOfTrips_dealing)
+    df['Designation'] = df['Designation'].apply(standardize_str)
+    df['MonthlyIncome'] = df['MonthlyIncome'].apply(MonthlyIncome_dealing)
+
+    customer_info_processed = df['customer_info'].apply(customer_info_dealing).str.split(',', expand=True)
+    df['married'] = customer_info_processed[0]
+    df['car_possession'] = customer_info_processed[1].apply(car_possesion_dealing)
+    df['offspring'] = customer_info_processed[2].apply(offspring_dealing)
+    df['offspring_identified'] = customer_info_processed[2].apply(offspring_identified_dealing)
+    df.drop('customer_info', axis=1, inplace=True)
+
+    # 数値データの欠損値を平均値で補完
+    for col in df.select_dtypes(include=['float64', 'int64']).columns:
+        df[col].fillna(df[col].mean(), inplace=True)
+
+    # カテゴリデータの欠損値を最頻値で補完
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col].fillna(df[col].mode()[0], inplace=True)
+
+    # One-Hot Encoding
+    df = pd.get_dummies(df, columns=[
+        'TypeofContact',
+        'Occupation',
+        'Gender',
+        'ProductPitched',
+        'Designation',
+        'married',
+        'car_possession'
+    ], drop_first=True)
+
+    return df
